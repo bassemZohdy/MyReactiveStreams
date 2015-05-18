@@ -1,4 +1,4 @@
-package demo.reactive.stream;
+package demo.reactive.stream.of.supplier;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
@@ -10,23 +10,23 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
 
-public class EventSubscription<T> implements Subscription {
-	final Subscriber<? super Event<T>> subscriber;
+public class SubscriptionOfSupplier<T> implements Subscription {
+	final Subscriber<? super T> subscriber;
 	private AtomicLong demand = new AtomicLong(1);
-	private final BlockingQueue<Event<T>> queue;
 	private final ExecutorService executor;
 	private final AtomicBoolean stop = new AtomicBoolean(false);
+	private final BlockingQueue<T> queue;
 
-	EventSubscription(Subscriber<? super Event<T>> s) {
-		queue = new LinkedBlockingQueue<Event<T>>();
+	SubscriptionOfSupplier(Subscriber<? super T> s) {
+		queue = new LinkedBlockingQueue<T>();
 		executor = Executors.newSingleThreadExecutor();
 		this.subscriber = s;
 		subscriber.onSubscribe(this);
 	}
 
-	public static <T> EventSubscription<T> of(
-			Subscriber<? super Event<T>> subscriber) {
-		return new EventSubscription<T>(subscriber);
+	public static <T> SubscriptionOfSupplier<T> of(
+			Subscriber<? super T> subscriber) {
+		return new SubscriptionOfSupplier<T>(subscriber);
 	}
 
 	@Override
@@ -43,10 +43,10 @@ public class EventSubscription<T> implements Subscription {
 
 	private void start() {
 		try {
-			Event<T> e;
+			T t;
 			while (!stop.get() && demand.decrementAndGet() > 0) {
-				e = queue.take();
-				subscriber.onNext(e);
+				t = queue.take();
+				subscriber.onNext(t);
 			}
 			subscriber.onComplete();
 		} catch (Throwable t) {
@@ -54,9 +54,9 @@ public class EventSubscription<T> implements Subscription {
 		}
 	}
 
-	public void send(Event<T> event) {
+	public void send(T t) {
 		try {
-			queue.put(event);
+			queue.put(t);
 		} catch (Throwable e) {
 			subscriber.onError(e);
 		}
